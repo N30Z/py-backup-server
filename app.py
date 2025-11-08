@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException, Request, Response
-from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field, validator
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -24,6 +24,9 @@ LOG_DIR.mkdir(parents=True, exist_ok=True)
 app = FastAPI(title="Mini Backup Server")
 scheduler = BackgroundScheduler(timezone="Europe/Berlin")
 scheduler.start()
+
+TEMPLATE_DIR = Path(__file__).parent / "templates"
+templates = Jinja2Templates(directory=str(TEMPLATE_DIR))
 
 # ---------- Models ----------
 
@@ -149,65 +152,33 @@ for j in JOBS.values():
 
 # ---------- API ----------
 
-@app.get("/", response_class=HTMLResponse)
-def index():
-    rows = []
-    for j in JOBS.values():
-        rows.append(f"""
-        <tr>
-          <td><code>{j.id}</code></td>
-          <td><code>{j.source}</code></td>
-          <td><code>{j.target}</code></td>
-          <td><code>{j.cron}</code></td>
-          <td>{'✅' if j.enabled else '⛔'}</td>
-          <td>{j.last_run or '-'}</td>
-          <td>{j.last_result or '-'}</td>
-          <td>
-            <form method="post" action="/jobs/{j.id}/run" style="display:inline"><button>Jetzt starten</button></form>
-            <form method="post" action="/jobs/{j.id}/toggle" style="display:inline"><button>Toggle</button></form>
-            <form method="post" action="/jobs/{j.id}/delete" style="display:inline" onsubmit="return confirm('Löschen?')"><button>Löschen</button></form>
-          </td>
-        </tr>""")
-    html = f"""
-    <html>
-    <head>
-      <meta charset="utf-8"/>
-      <title>Mini Backup Server</title>
-      <style>
-        body {{ font-family: system-ui, sans-serif; margin: 2rem; }}
-        table {{ border-collapse: collapse; width: 100%; }}
-        td, th {{ border: 1px solid #ddd; padding: 8px; font-size: 14px; }}
-        th {{ background: #f5f5f5; text-align: left; }}
-        code {{ background: #eee; padding: 2px 4px; border-radius: 4px; }}
-        form button {{ margin-right: .25rem; }}
-        fieldset {{ margin-top: 2rem; }}
-        input {{ width: 100%; padding: .4rem; margin:.25rem 0; }}
-      </style>
-    </head>
-    <body>
-      <h1>Mini Backup Server</h1>
-      <table>
-        <thead>
-          <tr><th>ID</th><th>Quelle</th><th>Ziel</th><th>Cron</th><th>Aktiv</th><th>Letzter Lauf</th><th>Ergebnis</th><th>Aktionen</th></tr>
-        </thead>
-        <tbody>
-          {''.join(rows) if rows else '<tr><td colspan="8">Keine Jobs</td></tr>'}
-        </tbody>
-      </table>
+CRON_LABELS = ["Minute", "Hour", "Day (Month)", "Month", "Day (Week)"]
 
-      <fieldset>
-        <legend>Neuen Job anlegen</legend>
-        <form method="post" action="/jobs">
-          <label>Quelle (absolut): <input name="source" required placeholder="/data/src"/></label>
-          <label>Ziel (absolut): <input name="target" required placeholder="/backup/dest"/></label>
-          <label>Cron (z.B. 0 2 * * *): <input name="cron" required/></label>
-          <button type="submit">Anlegen</button>
-        </form>
-      </fieldset>
-    </body>
-    </html>
-    """
-    return HTMLResponse(content=html)
+
+def _cron_breakdown(cron_expression: str):
+    parts = cron_expression.split()
+    if len(parts) < 5:
+        parts.extend(["*"] * (5 - len(parts)))
+    fields = parts[:5]
+    return [
+        {"label": label, "value": value}
+        for label, value in zip(CRON_LABELS, fields)
+    ]
+
+
+@app.get("/")
+def index(request: Request):
+    jobs = []
+    for job in JOBS.values():
+        jobs.append({
+            "job": job,
+            "cron_details": _cron_breakdown(job.cron),
+        })
+    context = {
+        "request": request,
+        "jobs": jobs,
+    }
+    return templates.TemplateResponse("index.html", context)
 
 @app.get("/jobs", response_model=List[Job])
 def list_jobs():
