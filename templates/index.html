@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Mini Backup Server</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 2rem; }
+    table { border-collapse: collapse; width: 100%; }
+    td, th { border: 1px solid #ddd; padding: 8px; font-size: 14px; vertical-align: top; }
+    th { background: #f5f5f5; text-align: left; }
+    code { background: #eee; padding: 2px 4px; border-radius: 4px; }
+    form button { margin-right: .25rem; }
+    fieldset { margin-top: 2rem; }
+    input { width: 100%; padding: .4rem; margin:.25rem 0; }
+    .cron-table { border-collapse: collapse; }
+    .cron-table td { border: none; padding: 2px 4px; }
+    .cron-table td:first-child { font-weight: 600; }
+    .job-actions { white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <h1>Mini Backup Server</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Quelle</th>
+        <th>Ziel</th>
+        <th>Cron</th>
+        <th>Aktiv</th>
+        <th>Letzter Lauf</th>
+        <th>Ergebnis</th>
+        <th>Aktionen</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% if jobs %}
+      {% for entry in jobs %}
+        {% set job = entry.job %}
+        <tr>
+          <td><code>{{ job.id }}</code></td>
+          <td><code>{{ job.source }}</code></td>
+          <td><code>{{ job.target }}</code></td>
+          <td>
+            <div><code>{{ job.cron }}</code></div>
+            <table class="cron-table">
+              {% for field in entry.cron_details %}
+              <tr>
+                <td>{{ field.label }}</td>
+                <td><code>{{ field.value }}</code></td>
+              </tr>
+              {% endfor %}
+            </table>
+          </td>
+          <td>{{ '✅' if job.enabled else '⛔' }}</td>
+          <td>{{ job.last_run or '-' }}</td>
+          <td>{{ job.last_result or '-' }}</td>
+          <td class="job-actions">
+            <form method="post" action="/jobs/{{ job.id }}/run" style="display:inline"><button>Jetzt starten</button></form>
+            <form method="post" action="/jobs/{{ job.id }}/toggle" style="display:inline"><button>Toggle</button></form>
+            <form method="post" action="/jobs/{{ job.id }}/delete" style="display:inline" onsubmit="return confirm('Löschen?')"><button>Löschen</button></form>
+          </td>
+        </tr>
+      {% endfor %}
+    {% else %}
+      <tr><td colspan="8">Keine Jobs</td></tr>
+    {% endif %}
+    </tbody>
+  </table>
+
+  <fieldset>
+    <legend>Neuen Job anlegen</legend>
+    <form method="post" action="/jobs">
+      <label>Quelle (absolut): <input name="source" required placeholder="/data/src"/></label>
+      <label>Ziel (absolut): <input name="target" required placeholder="/backup/dest"/></label>
+      <label>Cron (z.B. 0 2 * * *): <input name="cron" required/></label>
+      <button type="submit">Anlegen</button>
+    </form>
+  </fieldset>
+</body>
+</html>
