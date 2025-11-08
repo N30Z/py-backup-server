@@ -12,9 +12,10 @@
     form button { margin-right: .25rem; }
     fieldset { margin-top: 2rem; }
     input { width: 100%; padding: .4rem; margin:.25rem 0; }
-    .cron-table { border-collapse: collapse; }
-    .cron-table td { border: none; padding: 2px 4px; }
-    .cron-table td:first-child { font-weight: 600; }
+    .cron-table { border-collapse: collapse; width: 100%; margin-top: .5rem; }
+    .cron-details td { border: none; padding: 2px 4px; }
+    .cron-details td:first-child { font-weight: 600; }
+    .cron-help-table th, .cron-help-table td { padding: 4px 6px; }
     .job-actions { white-space: nowrap; }
   </style>
 </head>
@@ -43,7 +44,7 @@
           <td><code>{{ job.target }}</code></td>
           <td>
             <div><code>{{ job.cron }}</code></div>
-            <table class="cron-table">
+            <table class="cron-table cron-details">
               {% for field in entry.cron_details %}
               <tr>
                 <td>{{ field.label }}</td>
@@ -74,6 +75,49 @@
       <label>Quelle (absolut): <input name="source" required placeholder="/data/src"/></label>
       <label>Ziel (absolut): <input name="target" required placeholder="/backup/dest"/></label>
       <label>Cron (z.B. 0 2 * * *): <input name="cron" required/></label>
+      <table class="cron-table cron-help-table" aria-describedby="cron-help">
+        <caption id="cron-help" style="text-align:left; font-weight:600; padding:4px 0;">Aufbau eines Cron-Ausdrucks</caption>
+        <thead>
+          <tr>
+            <th>Position</th>
+            <th>Feld</th>
+            <th>Beschreibung</th>
+            <th>Beispiele</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td>Minute</td>
+            <td>0&ndash;59, wann innerhalb der Stunde der Job startet</td>
+            <td><code>0</code> (zur vollen Stunde), <code>*/15</code> (alle 15 Minuten)</td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td>Stunde</td>
+            <td>0&ndash;23, zu welcher Stunde der Job läuft</td>
+            <td><code>2</code> (02:00 Uhr), <code>*/6</code> (alle 6 Stunden)</td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td>Tag im Monat</td>
+            <td>1&ndash;31, an welchem Kalendertag</td>
+            <td><code>1</code> (erster Tag), <code>*/5</code> (alle 5 Tage)</td>
+          </tr>
+          <tr>
+            <td>4</td>
+            <td>Monat</td>
+            <td>1&ndash;12 oder Monatsnamen</td>
+            <td><code>1</code> (Januar), <code>4</code> (April), <code>*/3</code> (vierteljährlich)</td>
+          </tr>
+          <tr>
+            <td>5</td>
+            <td>Wochentag</td>
+            <td>0&ndash;6 (So&ndash;Sa) oder Namen, an welchem Wochentag</td>
+            <td><code>1</code> (Montag), <code>Mon-Fri</code> (werktags)</td>
+          </tr>
+        </tbody>
+      </table>
       <button type="submit">Anlegen</button>
     </form>
   </fieldset>
